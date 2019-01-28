@@ -100,9 +100,9 @@ export default {
                     <th
                       colspan={ column.colSpan }
                       rowspan={ column.rowSpan }
-                      on-mousemove={ ($event) => this.handleMouseMove($event, column) }
+                      on-mousemove={ ($event) => this.handleMouseMove($event, column, columns, cellIndex) }
                       on-mouseout={ this.handleMouseOut }
-                      on-mousedown={ ($event) => this.handleMouseDown($event, column) }
+                      on-mousedown={ ($event) => this.handleMouseDown($event, column, columns, cellIndex) }
                       on-click={ ($event) => this.handleHeaderClick($event, column) }
                       on-contextmenu={ ($event) => this.handleHeaderContextMenu($event, column) }
                       style={ this.getHeaderCellStyle(rowIndex, cellIndex, columns, column) }
@@ -352,11 +352,14 @@ export default {
       this.$parent.$emit('header-contextmenu', column, event);
     },
 
-    handleMouseDown(event, column) {
+    handleMouseDown(event, column, columns, cellIndex) {
       if (this.$isServer) return;
       if (column.children && column.children.length > 0) return;
       /* istanbul ignore if */
       if (this.draggingColumn && this.border) {
+        if (this.draggingColumn.nearbyPreviousSibling) {
+          column = columns[cellIndex - 1];
+        }
         this.dragging = true;
 
         this.$parent.resizeProxyVisible = true;
@@ -426,7 +429,7 @@ export default {
       }
     },
 
-    handleMouseMove(event, column) {
+    handleMouseMove(event, column, columns, cellIndex) {
       if (column.children && column.children.length > 0) return;
       let target = event.target;
       while (target && target.tagName !== 'TH') {
@@ -439,7 +442,11 @@ export default {
         let rect = target.getBoundingClientRect();
 
         const bodyStyle = document.body.style;
-        if (rect.width > 12 && rect.right - event.pageX < 8) {
+        var nearbyPreviousSibling = event.pageX - rect.left < 10;
+        if (rect.width > 12 && (rect.right - event.pageX < 10 || nearbyPreviousSibling)) {
+          column.nearbyPreviousSibling = nearbyPreviousSibling;
+          if (column.nearbyPreviousSibling && !!columns[cellIndex - 1] && !columns[cellIndex - 1].resizable) return;
+
           bodyStyle.cursor = 'col-resize';
           if (hasClass(target, 'is-sortable')) {
             target.style.cursor = 'col-resize';
